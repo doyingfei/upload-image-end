@@ -30,7 +30,7 @@ const insertTable = (name, size, uploader, upload_time, file_path) => {
     return new Promise((resolve, reject) => {
         db.run(`INSERT INTO files (name, size, uploader, upload_time, modify_time, modifier, file_path) VALUES (?, ?, ?, ?, ?, ?, ?)`,
             [name, size, uploader, upload_time, '', '', file_path],
-            function(err) {
+            function (err) {
                 if (err) {
                     console.error("数据插入失败：", err.message);
                     reject()
@@ -40,6 +40,18 @@ const insertTable = (name, size, uploader, upload_time, file_path) => {
                 resolve()
             }
         );
+    })
+}
+
+const queryMulti = (ids) => {
+    const query = `SELECT file_path FROM files WHERE id IN (${ids.join(',')})`;
+    return new Promise((resolve, reject) => {
+        db.all(query, [], (err, rows) => {
+            if (err) {
+                reject(err)
+            }
+            resolve(rows);
+        });
     })
 }
 
@@ -73,6 +85,21 @@ const deleteTable = (id) => {
     })
 }
 
+const editTable = (id, newName, modifier) => {
+    const query = `
+      UPDATE files 
+      SET name = ?, modifier = ?, modify_time = CURRENT_TIMESTAMP 
+      WHERE id = ?;
+    `;
+
+    db.run(query, [newName, modifier, id], function (err) {
+        if (err) {
+            return console.error('更新失败:', err.message);
+        }
+        console.log(`更新成功，${this.changes} 条记录被修改`);
+    });
+}
+
 const queryTable = (name, start_date, end_date, page, limit) => {
     // 动态构建 SQL 查询和参数数组
     let sql = 'SELECT * FROM files WHERE 1=1';
@@ -85,19 +112,22 @@ const queryTable = (name, start_date, end_date, page, limit) => {
     }
     // 上传时间区间查询
     if (start_date && end_date) {
-        sql += ' AND upload_date BETWEEN ? AND ?';
+        sql += ' AND upload_time BETWEEN ? AND ?';
         params.push(start_date, end_date);
     } else if (start_date) {
-        sql += ' AND upload_date >= ?';
+        sql += ' AND upload_time >= ?';
         params.push(start_date);
     } else if (end_date) {
         sql += ' AND upload_date <= ?';
         params.push(end_date);
     }
+    sql += ' ORDER BY id DESC';
     // 分页
-    const offset = (page - 1) * limit;
-    sql += ' LIMIT ? OFFSET ?';
-    params.push(limit, offset);
+    if (page > 0) {
+        const offset = (page - 1) * limit;
+        sql += ' LIMIT ? OFFSET ?';
+        params.push(limit, offset);
+    }
     return new Promise((resolve, reject) => {
         // 执行查询
         db.all(sql, params, (err, rows) => {
@@ -119,5 +149,7 @@ module.exports = {
     insertTable,
     queryTable,
     querySingle,
-    deleteTable
+    queryMulti,
+    deleteTable,
+    editTable
 };
