@@ -97,7 +97,7 @@ const packagePicture = (rows, res) => {
 const downloadPicture = (req, res) => {
     const ids = req.query.ids ? req.query.ids.split(',') : [];
     if (ids.length === 0) {
-        return res.status(400).send('No IDs provided');
+        return res.status(400).send('没有可下载的');
     }
     queryMulti(ids).then(rows => {
         packagePicture(rows, res)
@@ -108,11 +108,21 @@ const downloadPicture = (req, res) => {
     })
 }
 
+const downloadAll = async (req, res) => {
+    const {name = '', start_date, end_date} = req.query;
+    const totalRows = await queryTable(name, start_date, end_date, 0, 0)
+    if (totalRows.length === 0) {
+        return res.status(400).send('没有可下载的');
+    }
+    packagePicture(totalRows, res)
+}
+
 module.exports = {
     uploadImage,
     getList,
     deleteRecord,
     viewPicture,
     editPicture,
-    downloadPicture
+    downloadPicture,
+    downloadAll
 }

@@ -2,7 +2,7 @@ const express = require('express');
 const multer = require('multer');
 const path = require('path');
 const {db, createTable} = require('./db');  // 引入数据库连接和创建表函数
-const {uploadImage, getList, deleteRecord, viewPicture, editPicture,downloadPicture} = require('./api')
+const {uploadImage, getList, deleteRecord, viewPicture, editPicture,downloadPicture, downloadAll} = require('./api')
 const fs = require('fs');
 const cors = require('cors');
 
@@ -46,6 +46,7 @@ app.get('/list', getList)
 app.delete('/files/:id', deleteRecord)
 app.get('/view-image/:id', viewPicture)
 app.post('/edit', editPicture)
+app.get('/download-all', downloadAll)
 app.get('/download-images', downloadPicture)
 
 // 启动 Express 服务器
