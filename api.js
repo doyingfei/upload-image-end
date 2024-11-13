@@ -1,21 +1,32 @@
 const fs = require('fs');
 const path = require('path');
 const archiver = require('archiver');
-const {insertTable, queryTable, querySingle, queryMulti, deleteTable, editTable} = require('./db')
+const {insertTable, checkName, queryTable, querySingle, queryMulti, deleteTable, deleteMultiple, editTable} = require('./db')
 const e = require("express");
-const uploadImage = (req, res) => {
+const deleteImg = (filename) => {
+    try {
+        fs.unlinkSync(__dirname + '/uploads/' + filename);
+    }catch (e) {
+        console.log('删除图片' + filename + '失败')
+    }
+}
+const uploadImage = async (req, res) => {
+    if (!req.file) {
+        return res.status(400).json({ code: 400, message: '文件上传失败' });
+    }
     const {originalname, size, filename} = req.file;
     const originalNameUtf = Buffer.from(originalname, 'latin1').toString('utf8');
     const fileNameWithoutExt = path.basename(originalNameUtf, path.extname(originalname));
+    try {
+        await checkName(fileNameWithoutExt)
+    }catch (e) {
+        deleteImg(filename)
+        return res.status(500).json({message: '文件已存在', code: 500})
+    }
     insertTable(fileNameWithoutExt, size, req.body.managerNo, req.body.date, filename).then(() => {
         res.status(200).json({message: '上传成功', code: 200})
     }).catch(() => {
-        try {
-            fs.unlinkSync(__dirname + '/uploads/' + filename);
-            console.log('文件已成功删除');
-        } catch (err) {
-            console.error('删除文件失败:', err.message);
-        }
+        deleteImg(filename)
         res.status(500).json({message: originalNameUtf + '上传失败', code: 500});
     })
 }
@@ -31,13 +42,16 @@ const getList = async (req, res) => {
 }
 
 const deleteRecord = async (req, res) => {
-    const {id} = req.params;
+    const ids = req.params.id ? req.params.id.split(',') : [];
+    if(!ids.length) {
+        return res.status(500).json({message:'没有数据',code: 500})
+    }
     try {
-        const file_path = await querySingle(id)
-        await deleteTable(id);
-        // 删除文件
-        fs.unlink(__dirname + '/uploads/' + file_path, (err) => {
-        });
+        const rows = await queryMulti(ids)
+        for (const row of rows) {
+            deleteImg(row.file_path)
+        }
+        await deleteTable(ids);
         res.status(200).json({message: '删除成功', code: 200});
     } catch (err) {
         res.status(500).json({message: '删除失败', code: 500});

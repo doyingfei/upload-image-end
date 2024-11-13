@@ -26,6 +26,18 @@ const createTable = () => {
     });
 };
 
+const checkName = (name) => {
+    return new Promise((resolve, reject) => {
+        db.get("SELECT 1 FROM files WHERE name = ?", [name], (err, row) => {
+            if (row) {
+                reject()
+            } else {
+                resolve()
+            }
+        });
+    })
+}
+
 const insertTable = (name, size, uploader, upload_time, file_path) => {
     return new Promise((resolve, reject) => {
         db.run(`INSERT INTO files (name, size, uploader, upload_time, modify_time, modifier, file_path) VALUES (?, ?, ?, ?, ?, ?, ?)`,
@@ -72,13 +84,16 @@ const querySingle = (id) => {
     })
 }
 
-const deleteTable = (id) => {
+
+const deleteTable = (ids) => {
+    // 动态生成占位符
+    const placeholders = ids.map(() => '?').join(',');
+    const sql = `DELETE FROM files WHERE id IN (${placeholders})`;
     return new Promise((resolve, reject) => {
-        const deleteSql = 'DELETE FROM files WHERE id = ?';
-        db.run(deleteSql, id, function (err) {
+        db.run(sql, ids, function (err) {
             if (err) {
-                console.error('删除记录失败:', err.message);
-                reject()
+                console.log(err,'err')
+                reject(err)
             }
             resolve()
         });
@@ -118,7 +133,7 @@ const queryTable = (name, start_date, end_date, page, limit) => {
         sql += ' AND upload_time >= ?';
         params.push(start_date);
     } else if (end_date) {
-        sql += ' AND upload_date <= ?';
+        sql += ' AND upload_time <= ?';
         params.push(end_date);
     }
     sql += ' ORDER BY id DESC';
@@ -145,6 +160,7 @@ const queryTable = (name, start_date, end_date, page, limit) => {
 // 导出数据库对象和创建表的函数
 module.exports = {
     db,
+    checkName,
     createTable,
     insertTable,
     queryTable,

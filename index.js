@@ -50,6 +50,6 @@ app.get('/download-all', downloadAll)
 app.get('/download-images', downloadPicture)
 
 // 启动 Express 服务器
-app.listen(PORT, () => {
+app.listen(PORT,'0.0.0.0', () => {
     console.log(`服务器正在运行，访问 http://localhost:${PORT}`);
 });
